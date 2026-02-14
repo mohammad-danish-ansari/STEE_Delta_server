@@ -3,32 +3,34 @@ import {
   findOneByCondition,
   create as createUser,
   findByIdAndUpdate,
+  find,
+  findById,
+  create,
+  findOneAndDelete,
 } from "../../../../model/repositories/userRepository.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import MESSAGES from "../../../../model/helpers/messagehelper.js";
 import OPTIONS from "../../../../config/Options.js";
-import emailotp from "../../../../model/helpers/email.js";
+import { emailotp } from "../../../../model/helpers/email.js";
+import { findOneAttemptByCondition } from "../../../../model/repositories/attemptRepository.js";
+import { sendAssessmentInviteEmail } from './../../../../model/helpers/sendAssessmentInviteEmail.js';
 
 export const superAdminInsertFun = async () => {
   try {
     const existsUser = await findOneByCondition(
       { email: ADMIN_USER.email },
-      { _id: 1 }
+      { _id: 1 },
     );
 
     if (!existsUser) {
-      const hashedPassword = await bcrypt.hash(
-        ADMIN_USER.password,
-        10
-      );
+      const hashedPassword = await bcrypt.hash(ADMIN_USER.password, 10);
 
       await create({
         ...ADMIN_USER,
         password: hashedPassword,
       });
 
-      console.log("Admin created successfully");
     }
   } catch (error) {
     console.error("User Not Created", error);
@@ -45,7 +47,7 @@ export const adminLogin = async (req, res) => {
       });
     }
 
-    const user = await userAuth.findOne({
+    const user = await findOneByCondition({
       email: email.toLowerCase(),
       role: "ADMIN",
     });
@@ -72,7 +74,6 @@ export const adminLogin = async (req, res) => {
       role: user.role,
       userId: user._id,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
@@ -81,22 +82,12 @@ export const adminLogin = async (req, res) => {
   }
 };
 
-
 export const createCandidate = async (req, res) => {
   try {
-    // Role Check
-    if (
-      req.user.role !== OPTIONS.role.ADMIN &&
-      req.user.role !== OPTIONS.role.SUPER_ADMIN
-    ) {
-      return res.status(403).json({
-        message: "You are not authorized to create candidate",
-      });
-    }
 
-    const { name, phone, email, password } = req.body;
+    const { name, phone, email } = req.body;
 
-    if (!name || !phone || !email || !password) {
+    if (!name || !phone || !email) {
       return res.status(MESSAGES.rescode.HTTP_BAD_REQUEST).json({
         message: MESSAGES.apiErrorStrings.INVALID_REQUEST,
       });
@@ -112,27 +103,122 @@ export const createCandidate = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await createUser({
       name,
       phone,
       email: email.toLowerCase(),
-      password: hashedPassword,
-      role: OPTIONS.role.CANDIDATE, 
+      role: OPTIONS.role.CANDIDATE,
     });
 
-   return res.status(MESSAGES.rescode.HTTP_CREATE).json({
-  message: MESSAGES.apiSuccessStrings.ADDED("Candidate"),
-  data:newUser
-});
+    await sendAssessmentInviteEmail({
+      name,
+      email,
+    });
+
+    return res.status(MESSAGES.rescode.HTTP_CREATE).json({
+      message: "Candidate added successfully & assessment link sent",
+      data: newUser,
+    });
+  } catch (error) {
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+      error: error.message,
+    });
+  }
+};
+
+export const getAdminProfile = async (req, res) => {
+  try {
+    const user = await findById(req.auth.id);
+
+    if (!user) {
+      return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
+        message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("Admin"),
+      });
+    }
+
+    return res.status(MESSAGES.rescode.HTTP_OK).json({
+      message: MESSAGES.apiSuccessStrings.FETCHED("Admin"),
+      data: user,
+    });
+  } catch (error) {
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
+  }
+};
+
+export const getAllCandidates = async (req, res) => {
+  try {
+    const candidates = await find({ role: "CANDIDATE" });
+
+    return res.status(MESSAGES.rescode.HTTP_OK).json({
+      message: MESSAGES.apiSuccessStrings.FETCHED("candidates"),
+      data: candidates,
+    });
   } catch (error) {
     return res
       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
-      .json({
-        message: MESSAGES.apiErrorStrings.SERVER_ERROR,
-        error: error.message,
+      .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
+  }
+};
+
+export const updateUserByAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log("userId===",userId);
+    const updateData = req.body;
+
+    const userData = await findById(userId);
+    console.log("userData===",userData);
+
+    if (!userData) {
+      return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
+        success: false,
+        message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("Candidate"),
       });
+    }
+
+    const updatedUser = await findByIdAndUpdate(userId, updateData);
+
+    return res.status(MESSAGES.rescode.HTTP_OK).json({
+      success: true,
+      message: MESSAGES.apiSuccessStrings.UPDATED("Candidate"),
+      data: updatedUser,
+    });
+
+  } catch (error) {
+    console.error("update candidate error", error);
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
+  }
+};
+export const deleteUserByAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const deletedUser = await findOneAndDelete({ _id: userId });
+
+    if (!deletedUser) {
+      return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
+        success: false,
+        message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("Candidate"),
+      });
+    }
+
+    return res.status(MESSAGES.rescode.HTTP_OK).json({
+      success: true,
+      message: MESSAGES.apiSuccessStrings.DELETED("Candidate"),
+    });
+
+  } catch (error) {
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
   }
 };
 
@@ -158,24 +244,26 @@ export const sendOtp = async (req, res) => {
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    const otpExpire = Date.now() + 10 * 60 * 1000;
+   const otpExpire = Date.now() + 2 * 60 * 1000
 
-    await findByIdAndUpdate(user._id, { otp, otpExpire });
+    user.otp = otp;
+    user.otpExpire = otpExpire;
+    await user.save();
 
-    await emailotp({ user: email, otp });
+    await emailotp({
+      user: email,
+      otp,
+    });
 
     return res.status(MESSAGES.rescode.HTTP_OK).json({
       message: MESSAGES.apiSuccessStrings.OTP_SENT,
     });
   } catch (error) {
-    return res
-      .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
-      .json({
-        message: MESSAGES.apiErrorStrings.SERVER_ERROR,
-      });
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
   }
 };
-
 
 export const verifyOtp = async (req, res) => {
   try {
@@ -208,23 +296,74 @@ export const verifyOtp = async (req, res) => {
         message: MESSAGES.apiErrorStrings.OTP_EXPIRED,
       });
     }
-
+    const otpExpire = Date.now() + 2 * 60 * 1000;
     await findByIdAndUpdate(user._id, {
       otp: null,
       otpExpire: null,
     });
 
-   const token = user.genToken();
+    const token = user.genToken();
 
     return res.status(MESSAGES.rescode.HTTP_OK).json({
       message: MESSAGES.apiSuccessStrings.LOGIN_SUCCESS,
       token,
+      userId: user._id,
+      role: user.role,
     });
   } catch (error) {
-    return res
-      .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
-      .json({
-        message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
+  }
+};
+
+// export const getCandidateProfile = async (req, res) => {
+//   try {
+//     const user = await findById(req.auth.id);
+
+//     if (!user) {
+//       return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
+//         message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("candidate"),
+//       });
+//     }
+
+//     return res.status(MESSAGES.rescode.HTTP_OK).json({
+//       message: MESSAGES.apiSuccessStrings.FETCHED("candidate"),
+//       data: user,
+//     });
+//   } catch (error) {
+//     return res
+//       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
+//       .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
+//   }
+// };
+
+
+export const getCandidateProfile = async (req, res) => {
+  try {
+    const user = await findById(req.auth.id)
+
+    if (!user) {
+      return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
+        message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("candidate"),
       });
+    }
+
+    const attempt = await findOneAttemptByCondition({
+      userId: req.auth.id,
+      status: "submitted",
+    });
+
+    return res.status(MESSAGES.rescode.HTTP_OK).json({
+      message: MESSAGES.apiSuccessStrings.FETCHED("candidate"),
+      data: {
+        ...user.toObject(),
+        hasAttempted: !!attempt,
+      },
+    });
+  } catch (error) {
+    return res.status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR).json({
+      message: MESSAGES.apiErrorStrings.SERVER_ERROR,
+    });
   }
 };

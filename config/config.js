@@ -1,4 +1,4 @@
-import OPTIONS from "./Options";
+import OPTIONS from "./Options.js";
 
 
 export const ADMIN_USER = {

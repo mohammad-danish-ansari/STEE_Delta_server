@@ -1,24 +1,30 @@
 import mongoose from "mongoose";
-import OPTIONS from "../config/Options";
+import OPTIONS from "../config/Options.js";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     phone: {
       type: String,
-      required: true,
+      required: false,
     },
 
     email: {
       type: String,
-      required: true,
+      required: false,
       lowercase: true,
-      unique: true,
+      unique: false,
+    },
+    password: {
+      type: String,
+      required: false,
     },
     role: {
       type: String,
@@ -47,7 +53,7 @@ UserSchema.methods.genToken = function () {
       email: this.email,
       role: this.role,
     },
-    CONSTANTS.key,
+    process.env.JWT_KEY,
     {
       expiresIn: "1h",
     },

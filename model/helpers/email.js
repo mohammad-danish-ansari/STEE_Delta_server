@@ -1,37 +1,40 @@
-import nodemailer from "nodemailer"
+import axios from "axios";
+import dotenv from "dotenv";
 
-export const emailotp = async(data)=>{
-    try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: data.user,
-            subject: 'Your OTP Code',
-            text: `Your OTP code is ${data.otp}. It will expire in 10 minutes.`
-        };
-    
-        await transporter.sendMail(mailOptions,(error,info) =>{
-            if (error) {
-                console.log(error);
-                // res.status(500).send('Error Sending mail.')               
-            } else {
-                console.log(info.response);
-                // res.send('Email Sent.')
-            }
-        });
-    } catch (error) {
-        console.error(error);
-            // return res.status(500).json({ message: "Server error", error });
-           
-    }
-}
+dotenv.config();
 
+export const emailotp = async (data) => {
+  try {
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "OTP Service",
+          email: process.env.FROM_EMAIL,
+        },
+        to: [{ email: data.user }],
+        subject: "Your OTP Code",
+        htmlContent: `
+          <div style="font-family: Arial; padding:20px;">
+            <h2>Email Verification</h2>
+            <h1>${data.otp}</h1>
+            <p>This OTP expires in 2 minutes.</p>
+          </div>
+        `,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+        },
+      }
+    );
 
-
-export default emailotp
+    console.log("OTP Sent:", response.data);
+  } catch (error) {
+    console.log(
+      "FULL BREVO ERROR:",
+      error.response?.data || error.message
+    );
+  }
+};

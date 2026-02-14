@@ -8,9 +8,9 @@ const OPTIONS = {
 
     getAllStatus: () => {
       return [
-        ATTEMPT_OPTIONS.status.IN_PROGRESS,
-        ATTEMPT_OPTIONS.status.SUBMITTED,
-        ATTEMPT_OPTIONS.status.EXPIRED,
+        OPTIONS.status.IN_PROGRESS,
+        OPTIONS.status.SUBMITTED,
+        OPTIONS.status.EXPIRED,
       ];
     },
   },
