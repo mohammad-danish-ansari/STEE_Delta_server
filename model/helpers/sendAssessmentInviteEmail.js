@@ -5,7 +5,7 @@ dotenv.config();
 
 export const sendAssessmentInviteEmail = async (data) => {
   try {
-    const assessmentLink = `http://localhost:3000/`; 
+    const assessmentLink = `https://assessment-portal-cv6r.onrender.com/`; 
     //  Yaha baad me production link daal dena
 
     const response = await axios.post(
