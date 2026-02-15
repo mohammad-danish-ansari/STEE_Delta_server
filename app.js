@@ -1,12 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import apiRouter from "./routes.js";
 import express from "express";
-import dotenv from "dotenv";
 import connectDb from "./config/dbconnect.js";
 import cors from "cors";
 import logger from "morgan";
 import { superAdminInsertFun } from "./controllers/v1/website/user/user.js";
 
-dotenv.config();
 const app = express();
 
 app.use(express.json());

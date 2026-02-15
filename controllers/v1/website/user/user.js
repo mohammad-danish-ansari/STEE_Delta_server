@@ -16,6 +16,9 @@ import { emailotp } from "../../../../model/helpers/email.js";
 import { findOneAttemptByCondition } from "../../../../model/repositories/attemptRepository.js";
 import { sendAssessmentInviteEmail } from './../../../../model/helpers/sendAssessmentInviteEmail.js';
 
+
+
+// =================== Admin =======================
 export const superAdminInsertFun = async () => {
   try {
     const existsUser = await findOneByCondition(
@@ -149,21 +152,53 @@ export const getAdminProfile = async (req, res) => {
   }
 };
 
+// export const getAllCandidates = async (req, res) => {
+//   try {
+//     const candidates = await find({ role: "CANDIDATE" });
+
+//     return res.status(MESSAGES.rescode.HTTP_OK).json({
+//       message: MESSAGES.apiSuccessStrings.FETCHED("candidates"),
+//       data: candidates,
+//     });
+//   } catch (error) {
+//     return res
+//       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
+//       .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
+//   }
+// };
 export const getAllCandidates = async (req, res) => {
   try {
     const candidates = await find({ role: "CANDIDATE" });
 
+    const candidatesWithStatus = await Promise.all(
+      candidates.map(async (candidate) => {
+        const attempt = await findOneAttemptByCondition({
+          userId: candidate._id,
+        });
+
+        let status = "Pending";
+
+        if (attempt) {
+          status = attempt.status;
+        }
+
+        return {
+          ...candidate.toObject(),
+          status,
+        };
+      })
+    );
+
     return res.status(MESSAGES.rescode.HTTP_OK).json({
       message: MESSAGES.apiSuccessStrings.FETCHED("candidates"),
-      data: candidates,
+      data: candidatesWithStatus,
     });
-  } catch (error) {
+  }catch (error) {
     return res
       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
       .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
   }
 };
-
 export const updateUserByAdmin = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -223,6 +258,8 @@ export const deleteUserByAdmin = async (req, res) => {
 };
 
 
+
+// =================== Candidate =======================
 export const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -317,26 +354,6 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-// export const getCandidateProfile = async (req, res) => {
-//   try {
-//     const user = await findById(req.auth.id);
-
-//     if (!user) {
-//       return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
-//         message: MESSAGES.apiErrorStrings.DATA_NOT_FOUND("candidate"),
-//       });
-//     }
-
-//     return res.status(MESSAGES.rescode.HTTP_OK).json({
-//       message: MESSAGES.apiSuccessStrings.FETCHED("candidate"),
-//       data: user,
-//     });
-//   } catch (error) {
-//     return res
-//       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
-//       .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
-//   }
-// };
 
 
 export const getCandidateProfile = async (req, res) => {
