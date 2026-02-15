@@ -5,8 +5,8 @@ dotenv.config();
 
 export const sendAssessmentInviteEmail = async (data) => {
   try {
+    
     const assessmentLink = `https://assessment-portal-cv6r.onrender.com/`; 
-    //  Yaha baad me production link daal dena
 
     const response = await axios.post(
       "https://api.brevo.com/v3/smtp/email",
@@ -48,7 +48,7 @@ export const sendAssessmentInviteEmail = async (data) => {
       }
     );
 
-    console.log("Assessment Email Sent:", response.data);
+    console.log("Assessment email eent=====", response.data);
   } catch (error) {
     console.log(
       "BREVO ERROR:",

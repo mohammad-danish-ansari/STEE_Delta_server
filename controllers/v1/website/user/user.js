@@ -114,7 +114,7 @@ export const createCandidate = async (req, res) => {
       role: OPTIONS.role.CANDIDATE,
     });
 
-    await sendAssessmentInviteEmail({
+     await sendAssessmentInviteEmail({
       name,
       email,
     });
@@ -193,7 +193,7 @@ export const getAllCandidates = async (req, res) => {
       message: MESSAGES.apiSuccessStrings.FETCHED("candidates"),
       data: candidatesWithStatus,
     });
-  }catch (error) {
+  } catch (error) {
     return res
       .status(MESSAGES.rescode.HTTP_INTERNAL_SERVER_ERROR)
       .json({ message: MESSAGES.apiErrorStrings.SERVER_ERROR });
@@ -202,12 +202,14 @@ export const getAllCandidates = async (req, res) => {
 export const updateUserByAdmin = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("userId===",userId);
+    console.log("userId===", userId);
     const updateData = req.body;
 
     const userData = await findById(userId);
-    console.log("userData===",userData);
-
+    console.log("userData===", userData);
+  // await sendAssessmentInviteEmail({
+  //    userData
+  //   });
     if (!userData) {
       return res.status(MESSAGES.rescode.HTTP_NOT_FOUND).json({
         success: false,
@@ -216,7 +218,7 @@ export const updateUserByAdmin = async (req, res) => {
     }
 
     const updatedUser = await findByIdAndUpdate(userId, updateData);
-
+    
     return res.status(MESSAGES.rescode.HTTP_OK).json({
       success: true,
       message: MESSAGES.apiSuccessStrings.UPDATED("Candidate"),
@@ -281,7 +283,7 @@ export const sendOtp = async (req, res) => {
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();
-   const otpExpire = Date.now() + 2 * 60 * 1000
+    const otpExpire = Date.now() + 2 * 60 * 1000
 
     user.otp = otp;
     user.otpExpire = otpExpire;
