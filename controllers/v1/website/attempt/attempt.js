@@ -24,8 +24,8 @@ export const startAttempt = async (req, res) => {
     }
 
     // const duration = 60 * 60; 
-    const duration = 20;
-    // const duration = 5 * 60;
+    // const duration = 20;
+    const duration = 2 * 60;
 
     const attempt = await createAttempt({
       userId,
