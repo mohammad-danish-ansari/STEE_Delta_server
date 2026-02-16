@@ -13,6 +13,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(logger("dev"));
+
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
+
 app.use("/", apiRouter);
 
 const port = process.env.PORT;
